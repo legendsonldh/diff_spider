@@ -2,8 +2,8 @@
 """
 -----------------------------------------------------------------
 Autor:    ludeh
-Time:     2022-07-24
-Version:  0.1
+Time:     2022-07-30
+Version:  1.0.0
 -----------------------------------------------------------------
     
 This script need these lib
@@ -37,15 +37,30 @@ from selenium.webdriver.common.action_chains import ActionChains
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-global BrowserType
-
-BrowserType = 1 # 1:Chrome
-
+"""
+gloabl variable: Type of WebBrowser (Chrome/Firefox)
+                 Type of downloadImageMethod (human-like/screenshot/requestlib)
+"""
 class BrowserTypeFlag(Enum):
     Chrome  = 1
     Firefox = 2
 
+global BrowserType
 
+BrowserType = 1 # 1:Chrome
+
+class downloadImageMethod(Enum):
+    humanLike  = 1
+    screenShot = 2
+    requestLib = 3
+
+global downloadImageMethodType
+
+downloadImageMethodType = 1
+
+"""
+IO Function for write comic page
+"""
 # create a content
 def createFolder(filename,name):
     if os.path.exists(filename) is True:
@@ -64,11 +79,11 @@ def writePageFlag(txt,sth):
 # read the pageflag
 def readPageFlag(txt):
     if os.path.exists(txt) is True:
-        with open(txt) as f:         # 默认模式为‘r’，只读模式
+        with open(txt) as f:         
             content = int(f.read())  # read all content 
             return content
     else:
-        return 0                     # 因为列表的第一个元素的位置是[0]，所有返回0
+        return 0                     
 
 
 
@@ -86,13 +101,12 @@ def noImageModeBrowser():
     else:
         options = webdriver.FirefoxOptions() 
 
-    #加上下面两行，解决报错
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu') 
-    options.add_argument('--hide-scrollbars') #隐藏滚动条, 应对一些特殊页面
-    options.add_argument('blink-settings=imagesEnabled=false') #不加载图片, 提升速度
+    options.add_argument('--hide-scrollbars') 
+    options.add_argument('blink-settings=imagesEnabled=false') # no imageenabled
     
     if BrowserType == BrowserTypeFlag.Chrome.value:
         noImageBrowser = webdriver.Chrome(options=options)  
@@ -107,14 +121,14 @@ def ImageModeBrowser():
         options = webdriver.ChromeOptions()  
     else:
         options = webdriver.FirefoxOptions() 
-        
-    #options.add_argument('--headless')
     
-    #加上下面两行，解决报错
+    if downloadImageMethodType == downloadImageMethod.screenShot.value 
+        options.add_argument('--headless')
+    
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu') 
-    options.add_argument('--hide-scrollbars') #隐藏滚动条, 应对一些特殊页面
+    options.add_argument('--hide-scrollbars') 
 
     if BrowserType == BrowserTypeFlag.Chrome.value:
         ImageBrowser = webdriver.Chrome(options=options)  
@@ -123,28 +137,29 @@ def ImageModeBrowser():
     return ImageBrowser
 
 """
-Use webdriver access the url and use bs4 resolve page with html5 mode\
+Use webdriver access the url and use bs4 resolve page with html5 mode
 More details: https://beautifulsoup.cn/#id13
 """
 def getUrl(browser,url):
     try:
         browser.get(url)
     except:
-        print('please wait 120 seconds')           # 如果出现异常，则等待120s，重启读取
-        # d.quit()
+        print('please wait 120 seconds')     
+        browser.quit()
         time.sleep(120)
         browser.get(url)
         print('Connection Rest')
     time.sleep(1)
-    sp = BeautifulSoup(browser.page_source, "html5lib")  # html5解析网页
-    #browser.get('about:blank')                           # 这个很关键，防止出现链接污染
-    return sp                                      # 返回解析过后的网址源码
+    sp = BeautifulSoup(browser.page_source, "html5lib")   # html5 module parse the page
+    #browser.get('about:blank')                           # it's the key to prevent Connection pollution 
+    return sp                                             # return the source of page
 
 
 """
 614    异世界后宫
 15355  愚者之夜
 9      家庭教師
+279    租借女友
 """
 
 numComic = '9' 
@@ -184,11 +199,6 @@ for o in l:
 let's goto the next url and download each chapter of this comic
 
 """
-
-class downloadImageMethod(Enum):
-    humanLike  = 1
-    screenShot = 2
-    requestLib = 3
     
 
 def downloadImage(pageNum,beginPageNum,chapterNum,endPageNum,floderPath,MethodFlag):
@@ -201,7 +211,8 @@ def downloadImage(pageNum,beginPageNum,chapterNum,endPageNum,floderPath,MethodFl
             comicPageUrl = 'https://www.mangabz.com'+t[chapterNum]+'#ipg'+str(j)
             
             downloadBrowser = ImageModeBrowser()
-            downloadBrowser.set_window_size(50, 50)
+            if downloadImageMethodType == downloadImageMethod.humanLike.value 
+                downloadBrowser.set_window_size(50, 50)
             #downloadBrowser.maximize_window()
             
             imageSp = getUrl(downloadBrowser,comicPageUrl)
@@ -238,24 +249,22 @@ def downloadImage(pageNum,beginPageNum,chapterNum,endPageNum,floderPath,MethodFl
                 disadvantage: head webdriver;
                               not support background
                 """
-                # 右键点击元素
+                # tap the image element
                 #pyautogui.hotkey('alt', 'tab')
                 action = ActionChains(downloadBrowser).move_to_element(IMG)
                 action.context_click(IMG)
                 action.perform()
-                # 图像另存为
+                # image saved as 
                 pyautogui.typewrite('v')
                 time.sleep(random.uniform(0.25,0.5))      
-                # 将文件名传给剪贴板
+                # input the filename by the clipboard
                 pyperclip.copy(downloadImagePath)
-                # ctrl + v 粘贴文件名
+                # ctrl + v paste the filename
                 pyautogui.hotkey('ctrl', 'v')     
                 pyautogui.hotkey('alt', 's') 
-                # 下面操作可以不要
+                # this action solve the problem that folder has the same filename
                 time.sleep(random.uniform(0,0.25))
                 pyautogui.hotkey('alt', 'y') 
-                #time.sleep(random.uniform(0,0.5))
-                # 验证是否下载了图片
             
             if MethodFlag == downloadImageMethod.screenShot.value:
                 
@@ -275,18 +284,19 @@ def downloadImage(pageNum,beginPageNum,chapterNum,endPageNum,floderPath,MethodFl
                 location = IMG.location
                 size = IMG.size
                 top,bottom,left,right = location['y'], location['y']+size['height'], location['x'], location['x']+size['width']  
-                # 截取整张网页图片
+                # screenshot full image
                 screenshot = downloadBrowser.get_screenshot_as_png()
                 screenshot = Image.open(BytesIO(screenshot))
-                # 将网页中需要的图片通过坐标裁剪出来 但是这样出来的图片大小更大
+                # cut the image depends the axis of image in the window
                 screenshot = screenshot.crop((left, top, right, bottom))
+                # if you want other format
                 #screenshot = screenshot.convert('RGB')
                 screenshot.save(downloadImagePath)      
                    
                     
             if MethodFlag == downloadImageMethod.requestLib.value:    
     
-                # 请求头
+                # request header
                 headers = {
                     'Connection': 'close',
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
@@ -322,10 +332,9 @@ def downloadImage(pageNum,beginPageNum,chapterNum,endPageNum,floderPath,MethodFl
                             f.write(data)     
                             bar.update(totalImageSize) 
             
-                # 验证是否下载了图片
+            # verify the exist of image
             if os.path.exists(downloadImagePath) is True:
                 writePageFlag(pageNum,j)                
-                #print('\n'+u[chapterNum]+"\t实际完成\t"+str(j)+"/"+str(endPageNum-1))
                 pbar.update(1)
                 downloadBrowser.close()         
                  
@@ -336,7 +345,6 @@ with tqdm(total=chapterLength) as pbar:
     pbar.set_description('Comic Processing')
     for i in range(chapterLength-1,-1,-1):
         # name the folder
-        #floderPath = 'D:/comic/'+numComic+'/'+u[i]+'/'
         floderPath = 'D:\comic\\'+comicTitle+'\\'+u[i]+'\\'
         pageNum    = floderPath+'page_num.txt'
         # create the folder
@@ -361,7 +369,6 @@ with tqdm(total=chapterLength) as pbar:
             if downloadPageNum == endPageNum:
                 pbar.update(1)
             if downloadPageNum == 1:
-                #print(u[i]+'\t'+'开始下载\r',end = ' \r')
                 beginPageNum = 1
                 # download each page
                 downloadImage(pageNum,beginPageNum,i,endPageNum,floderPath,1)
@@ -369,7 +376,6 @@ with tqdm(total=chapterLength) as pbar:
             # check the breakpoint and contiune download
             if downloadPageNum != 1 & downloadPageNum != int(n[i]):
                 downloadBreakPageNum = readPageFlag(pageNum)  
-                #print(u[i]+'\t'+'已下载'+str(downloadBreakPageNum)+'页',end = ' \r')
                 beginPageNum = downloadBreakPageNum+1
                 #   continue download
                 downloadImage(pageNum,beginPageNum,i,endPageNum,floderPath,1)
